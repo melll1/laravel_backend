@@ -1,5 +1,5 @@
 <?php
-que onda gorrrrrdaaaaaa
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Hash;
@@ -146,7 +146,25 @@ Route::prefix('desparasitaciones')->group(function () {
     Route::get('/mascota/{mascotaId}', [DesparasitacionController::class, 'porMascota']); // ← Nueva
 });
 
+Route::prefix('tratamientos')->group(function () {
+    Route::get('/', [App\Http\Controllers\TratamientoController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\TratamientoController::class, 'store']);
+    Route::get('/{id}', [App\Http\Controllers\TratamientoController::class, 'show']);
+    Route::put('/{id}', [App\Http\Controllers\TratamientoController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\TratamientoController::class, 'destroy']);
+    Route::get('/mascota/{mascotaId}', [App\Http\Controllers\TratamientoController::class, 'porMascota']);
 });
+
+Route::prefix('diagnosticos')->group(function () {
+    Route::get('/', [App\Http\Controllers\DiagnosticoController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\DiagnosticoController::class, 'store']);
+    Route::get('/mascota/{mascotaId}', [App\Http\Controllers\DiagnosticoController::class, 'porMascota']);
+    Route::put('/{id}', [App\Http\Controllers\DiagnosticoController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\DiagnosticoController::class, 'destroy']);
+});
+
+});
+
 
 
 

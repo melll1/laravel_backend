@@ -67,5 +67,54 @@ class DesparasitacionController extends Controller
     return response()->json($desparasitaciones);
 }
 
+public function update(Request $request, $id)
+{
+    $request->validate([
+        'nombre' => 'required|string',
+        'fecha_aplicacion' => 'required|date',
+        'proxima_dosis' => 'nullable|date',
+        'tipo' => 'required|in:Interna,Externa',
+        'observaciones' => 'nullable|string'
+    ]);
+
+    $desparasitacion = Desparasitacion::find($id);
+
+    if (!$desparasitacion) {
+        return response()->json(['mensaje' => 'Desparasitación no encontrada'], 404);
+    }
+
+    $desparasitacion->update($request->all());
+
+    // Actualizar historial asociado
+    $historial = HistorialMedico::where('desparasitacion_id', $desparasitacion->id)->first();
+    if ($historial) {
+        $historial->update([
+            'descripcion' => 'Desparasitación ' . strtolower($desparasitacion->tipo) . ': ' . $desparasitacion->nombre,
+            'fecha' => $desparasitacion->fecha_aplicacion,
+            'tipo' => 'Desparasitación'
+        ]);
+    }
+
+    return response()->json([
+        'mensaje' => 'Desparasitación y historial actualizados correctamente',
+        'desparasitacion' => $desparasitacion
+    ]);
+}
+
+public function destroy($id)
+{
+    $desparasitacion = Desparasitacion::find($id);
+
+    if (!$desparasitacion) {
+        return response()->json(['mensaje' => 'Desparasitación no encontrada'], 404);
+    }
+
+    $desparasitacion->delete();
+
+    return response()->json(['mensaje' => 'Desparasitación eliminada correctamente']);
+}
+
+
+
 }
 // 🐾 Controlador para manejar desparasitaciones

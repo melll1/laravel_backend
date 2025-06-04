@@ -13,11 +13,13 @@ class HistorialMedico extends Model
     // 🧾 Campos que se pueden llenar masivamente
     protected $fillable = [
         'mascota_id',
-    'vacuna_id', // <-- Añade esta línea
-    'desparasitacion_id', // <-- Añade esta línea
-    'descripcion',
-    'fecha',
-    'tipo'
+        'vacuna_id',
+        'desparasitacion_id',
+        'tratamiento_id', 
+        'diagnostico_id',
+        'descripcion',
+        'fecha',
+        'tipo'
     ];
 
     // 🔗 Relación: un historial pertenece a una mascota
