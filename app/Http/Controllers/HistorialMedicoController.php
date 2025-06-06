@@ -38,14 +38,18 @@ public function buscar(Request $request)
         'descripcion' => 'required|string',
         'fecha' => 'required|date',
         'tipo' => 'required|string',
-        'vacuna_id' => 'nullable|exists:vacunas,id', // ✅ Acepta vacuna_id
-        'desparasitacion_id' => 'nullable|exists:desparasitaciones,id'
+        'vacuna_id' => 'nullable|exists:vacunas,id', 
+        'desparasitacion_id' => 'nullable|exists:desparasitaciones,id',
+        'tratamiento_id' => 'nullable|exists:tratamientos,id',
+        'diagnostico_id' => 'nullable|exists:diagnosticos,id'
     ]);
 
     $nuevoRegistro = HistorialMedico::create([
         'mascota_id' => $request->mascota_id,
-        'vacuna_id' => $request->vacuna_id, // ✅ Se guarda si está presente
+        'vacuna_id' => $request->vacuna_id,
         'desparasitacion_id' => $request->desparasitacion_id,
+        'tratamiento_id' => $request->tratamiento_id,
+        'diagnostico_id' => $request->diagnostico_id,
         'descripcion' => $request->descripcion,
         'fecha' => $request->fecha,
         'tipo' => $request->tipo
@@ -140,6 +144,30 @@ public function actualizarPorVacuna(Request $request, $vacuna_id)
 
     return response()->json(['mensaje' => 'Historial actualizado correctamente', 'historial' => $historial]);
 }
+
+public function porTratamiento($tratamientoId)
+{
+    $historial = HistorialMedico::where('tratamiento_id', $tratamientoId)->first();
+
+    if ($historial) {
+        return response()->json($historial);
+    }
+
+    return response()->json(['mensaje' => 'Historial no encontrado para este tratamiento'], 404);
+}
+
+
+public function porDiagnostico($diagnosticoId)
+{
+    $historial = HistorialMedico::where('diagnostico_id', $diagnosticoId)->first();
+
+    if ($historial) {
+        return response()->json($historial);
+    }
+
+    return response()->json(['mensaje' => 'Historial no encontrado para este diagnostico'], 404);
+}
+
 
 
 }

@@ -19,7 +19,8 @@ class DiagnosticoController extends Controller
             'mascota_id' => 'required|exists:mascotas,id',
             'fecha' => 'required|date',
             'descripcion' => 'required|string',
-            'notas' => 'nullable|string',
+            'titulo' => 'required|string', // <- Añadido
+            
         ]);
 
         $diagnostico = Diagnostico::create($request->all());
@@ -27,9 +28,10 @@ class DiagnosticoController extends Controller
         HistorialMedico::create([
             'mascota_id' => $diagnostico->mascota_id,
             'diagnostico_id' => $diagnostico->id,
-            'descripcion' => 'Diagnóstico: ' . $diagnostico->descripcion,
+            'descripcion' => 'Diagnostico: ' . $diagnostico->descripcion,
             'fecha' => $diagnostico->fecha,
-            'tipo' => 'Diagnóstico',
+            'tipo' => 'Diagnostico'
+
         ]);
 
         return response()->json([
@@ -45,7 +47,8 @@ class DiagnosticoController extends Controller
         $request->validate([
             'fecha' => 'required|date',
             'descripcion' => 'required|string',
-            'notas' => 'nullable|string',
+            'titulo' => 'required|string', // <- Añadido
+            
         ]);
 
         $diagnostico->update($request->all());
@@ -53,9 +56,9 @@ class DiagnosticoController extends Controller
         $historial = HistorialMedico::where('diagnostico_id', $diagnostico->id)->first();
         if ($historial) {
             $historial->update([
-                'descripcion' => 'Diagnóstico: ' . $diagnostico->descripcion,
+                'descripcion' => 'Diagnostico: ' . $diagnostico->descripcion,
                 'fecha' => $diagnostico->fecha,
-                'tipo' => 'Diagnóstico',
+                'tipo' => 'Diagnostico'
             ]);
         }
 
@@ -65,10 +68,15 @@ class DiagnosticoController extends Controller
     public function destroy($id)
     {
         $diagnostico = Diagnostico::findOrFail($id);
-        $diagnostico->delete();
 
-        return response()->json(['mensaje' => 'Diagnóstico eliminado correctamente']);
-    }
+    // 🔥 Eliminar historial asociado antes
+    HistorialMedico::where('diagnostico_id', $diagnostico->id)->delete();
+
+    // Luego eliminar el diagnóstico
+    $diagnostico->delete();
+
+    return response()->json(['mensaje' => 'Diagnóstico y su historial eliminado correctamente']);
+ }
 
     public function porMascota($mascotaId)
     {

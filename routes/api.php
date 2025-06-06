@@ -163,6 +163,10 @@ Route::prefix('diagnosticos')->group(function () {
     Route::delete('/{id}', [App\Http\Controllers\DiagnosticoController::class, 'destroy']);
 });
 
+Route::get('/historiales/por-tratamiento/{tratamientoId}', [HistorialMedicoController::class, 'porTratamiento']);
+Route::get('/historiales/por-diagnostico/{diagnosticoId}', [HistorialMedicoController::class, 'porDiagnostico']);
+
+
 });
 
 

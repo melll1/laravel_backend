@@ -13,7 +13,8 @@ class Diagnostico extends Model
         'mascota_id',
         'fecha',
         'descripcion',
-        'notas',
+        'titulo'
+        
     ];
 
     public function mascota()
