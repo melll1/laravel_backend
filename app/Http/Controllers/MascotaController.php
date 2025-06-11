@@ -5,27 +5,37 @@ namespace App\Http\Controllers;
 use App\Models\Mascota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+use App\Models\AsignacionPaseador;
 
 
 class MascotaController extends Controller
 {
     // Listar todas las mascotas
-    public function index(Request $request)
+public function index(Request $request)
 {
     $user = $request->user();
 
-    // Si es veterinario, devuelve todas las mascotas con datos del dueño
     if ($user->role === 'veterinario') {
-        $mascotas = Mascota::with('usuario')->get(); // 👈 incluye datos del dueño
-    } else {
-        // Si es dueño, solo ve sus propias mascotas
-        $mascotas = Mascota::with('usuario')
+        // Veterinario ve todas las mascotas
+        $mascotas = Mascota::with(['usuario', 'asignaciones'])->get();
+    } elseif ($user->role === 'dueno') {
+        // Dueño ve solo sus mascotas
+        $mascotas = Mascota::with(['usuario', 'asignaciones'])
             ->where('user_id', $user->id)
             ->get();
+    } elseif ($user->role === 'paseador') {
+        // Paseador ve mascotas asignadas a él (relación en tabla intermedia)
+        $mascotas = $user->mascotasAsignadas()->with(['usuario', 'asignaciones'])->get();
+    } else {
+        return response()->json(['error' => 'Rol no autorizado.'], 403);
     }
 
     return response()->json($mascotas);
 }
+
+
 
 
     // Registrar una nueva mascota (usando método estándar store)
@@ -49,6 +59,7 @@ class MascotaController extends Controller
             'microchip' => 'nullable|string',
             'color' => 'nullable|string',
             'esterilizado' => 'nullable|string',
+            'descripcion' => 'nullable|string|max:1000',
             'foto' => 'nullable|image|max:2048', // 📷 Validar si hay imagen
         ]);
 
@@ -72,6 +83,7 @@ class MascotaController extends Controller
         'microchip' => $request->microchip,
         'color' => $request->color,
         'esterilizado' => $request->esterilizado,
+        'descripcion' => $request->descripcion,
         'foto' => $fotoPath, // 📷 Guardamos la ruta de la foto
     ]);
 
@@ -163,6 +175,81 @@ public function buscar(Request $request)
         ->get();
 
     return response()->json($mascotas); // 📤 Devuelve las mascotas encontradas
+}
+
+
+
+public function buscarAvanzado(Request $request)
+{
+    $query = $request->input('query');
+
+    $mascotas = Mascota::with('usuario')
+        ->where('nombre', 'like', "%$query%")
+        ->orWhereHas('usuario', function ($q) use ($query) {
+            $q->where('name', 'like', "%$query%")
+              ->orWhere('email', 'like', "%$query%");
+        })
+        ->get();
+
+    return response()->json($mascotas);
+}
+
+
+public function show($id)
+{
+    $mascota = Mascota::with('usuario')->findOrFail($id);
+    return response()->json($mascota);
+}
+
+public function desasignarPaseador($mascotaId, $paseadorId)
+{
+    $mascota = Mascota::findOrFail($mascotaId);
+    $mascota->paseadores()->detach($paseadorId); // 👈 Solo uno
+
+    return response()->json(['mensaje' => 'Paseador desasignado correctamente']);
+}
+
+
+
+public function asignarPaseador(Request $request, $mascotaId)
+{
+    $request->validate([
+        'paseador_id' => 'required|exists:users,id',
+        'desde' => 'required|date',
+        'hasta' => 'required|date|after_or_equal:desde'
+    ]);
+
+    $mascota = Mascota::findOrFail($mascotaId);
+
+    $mascota->paseadores()->syncWithoutDetaching([
+        $request->paseador_id => [
+            'desde' => $request->desde,
+            'hasta' => $request->hasta
+        ]
+    ]);
+
+    return response()->json(['mensaje' => 'Paseador asignado correctamente']);
+}
+
+public function mascotasAsignadasAlPaseador()
+{
+    $user = Auth::user();
+
+    if ($user->role !== 'paseador') {
+        return response()->json(['error' => 'No autorizado'], 403);
+    }
+
+    $hoy = Carbon::today();
+
+    $asignaciones = AsignacionPaseador::with('mascota')
+        ->where('paseador_id', $user->id)
+        ->whereDate('desde', '<=', $hoy)
+        ->whereDate('hasta', '>=', $hoy)
+        ->get();
+
+    $mascotas = $asignaciones->pluck('mascota')->filter(); // Elimina nulls por seguridad
+
+    return response()->json($mascotas);
 }
 
 }

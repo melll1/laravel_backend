@@ -54,7 +54,8 @@ return [
     | Zona horaria por defecto para funciones de fecha y hora en PHP.
     |
     */
-    'timezone' => 'UTC',
+    'timezone' => 'Europe/Madrid', // o la que te corresponda según tu país
+
 
     /*
     |--------------------------------------------------------------------------

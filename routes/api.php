@@ -2,7 +2,6 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Auth\Events\Verified;
 use App\Models\User;
 use App\Http\Controllers\AuthController;
@@ -10,10 +9,12 @@ use App\Http\Controllers\MascotaController;
 use App\Http\Controllers\HistorialMedicoController;
 use App\Http\Controllers\VacunaController;
 use App\Http\Controllers\DesparasitacionController;
+use App\Http\Controllers\NotificacionController;
 use Illuminate\Support\Facades\Password;
+use App\Http\Controllers\CitaController;
+use App\Http\Controllers\AsignacionPaseadorController;
 
 
-// 📌 Rutas públicas (sin autenticación)
 
 // Registro de usuario
 Route::post('/register', [AuthController::class, 'register']);
@@ -92,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/mascotas/{id}', [MascotaController::class, 'update']); // Editar mascota
     Route::delete('/mascotas/{id}', [MascotaController::class, 'destroy']); // Eliminar mascota
     Route::get('/mascotas', [MascotaController::class, 'index']); // Listar mascotas
+    Route::get('/mascotas/buscar-avanzado', [MascotaController::class, 'buscarAvanzado']);
     Route::get('/mascotas/{id}', [MascotaController::class, 'show']); // Ver detalles de una mascota
     Route::get('/mascotas/usuario', [MascotaController::class, 'mascotasPorUsuario']); // Mascotas del usuario autenticado
 
@@ -166,8 +168,32 @@ Route::prefix('diagnosticos')->group(function () {
 Route::get('/historiales/por-tratamiento/{tratamientoId}', [HistorialMedicoController::class, 'porTratamiento']);
 Route::get('/historiales/por-diagnostico/{diagnosticoId}', [HistorialMedicoController::class, 'porDiagnostico']);
 
+Route::post('/mascotas/{id}/asignar-paseador', [MascotaController::class, 'asignarPaseador']);
+Route::delete('/mascotas/{id}/desasignar-paseador', [MascotaController::class, 'desasignarPaseador']);
+
+
+   // Paseadores
+    Route::get('/paseadores', [AuthController::class, 'listarPaseadores']);
+
+    // Notificaciones
+    Route::get('/notificaciones', [NotificacionController::class, 'index']);
+    Route::post('/notificaciones', [NotificacionController::class, 'store']);
+    Route::put('/notificaciones/{id}', [NotificacionController::class, 'update']);
+    // Citas
+Route::apiResource('citas', CitaController::class)->only(['index', 'store', 'update', 'destroy']);
+
+// Asignaciones de paseador
+Route::get('/asignaciones', [AsignacionPaseadorController::class, 'index']);
+Route::post('/asignaciones', [AsignacionPaseadorController::class, 'store']);
+Route::delete('/asignaciones/{id}', [AsignacionPaseadorController::class, 'destroy']);
+Route::delete('/mascotas/{mascota}/desasignar-paseador/{paseador}', [MascotaController::class, 'desasignarPaseador']);
+Route::get('/paseador/mascotas-asignadas', [MascotaController::class, 'mascotasAsignadasAlPaseador']);
+
+
 
 });
+
+
 
 
 

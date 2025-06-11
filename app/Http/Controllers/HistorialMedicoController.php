@@ -10,7 +10,7 @@ class HistorialMedicoController extends Controller
    // 🔍 Buscar historial filtrado por mascota_id, fecha y tipo
 public function buscar(Request $request)
 {
-    $query = HistorialMedico::query();
+    $query = HistorialMedico::with('mascota.usuario');
 
     if ($request->has('mascota_id')) {
         $query->where('mascota_id', $request->mascota_id);
@@ -28,6 +28,7 @@ public function buscar(Request $request)
 
     return response()->json($resultados);
 }
+
 
 
     // ➕ Registrar un nuevo evento médico
@@ -105,15 +106,17 @@ public function buscar(Request $request)
 
     // 📋 Todos los historiales (uso general o para testing)
     public function indexAll()
-    {
-        return response()->json(HistorialMedico::all());
-    }
+{
+    return response()->json(HistorialMedico::with('mascota.usuario')
+->get());
+}
+
 
     // app/Http/Controllers/HistorialMedicoController.php
 
 public function historialPorMascota($id)
 {
-    $historiales = HistorialMedico::with('mascota') // si hay relación
+    $historiales = HistorialMedico::with('mascota.usuario') // ← incluye dueño aquí
         ->where('mascota_id', $id)
         ->orderBy('fecha', 'desc')
         ->get();
@@ -123,7 +126,8 @@ public function historialPorMascota($id)
 
 public function porVacuna($vacunaId)
 {
-    $historial = HistorialMedico::where('vacuna_id', $vacunaId)->first();
+    $historial = HistorialMedico::with('mascota.usuario')
+->where('vacuna_id', $vacunaId)->first();
 
     if ($historial) {
         return response()->json($historial);
@@ -131,6 +135,7 @@ public function porVacuna($vacunaId)
 
     return response()->json(['mensaje' => 'Historial no encontrado para esta vacuna'], 404);
 }
+
 
 
 public function actualizarPorVacuna(Request $request, $vacuna_id)

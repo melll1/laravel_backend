@@ -10,12 +10,13 @@ class Tratamiento extends Model
     use HasFactory;
 
     protected $fillable = [
-        'mascota_id',
-        'nombre',
-        'fecha_inicio',
-        'fecha_fin',
-        'observaciones',
-    ];
+    'mascota_id',
+    'nombre',
+    'fecha_inicio',
+    'fecha_fin',
+    'observaciones',
+    'frecuencia_minutos'  // 👈 Añadido
+];
 
     // Relación con la mascota
     public function mascota()

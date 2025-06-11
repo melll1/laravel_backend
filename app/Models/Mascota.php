@@ -20,6 +20,7 @@ class Mascota extends Model
     'microchip',
     'color',
     'esterilizado',
+    'descripcion',
     'foto', // 📷 Campo agregado para guardar la ruta de la foto
 ];
 
@@ -32,5 +33,18 @@ class Mascota extends Model
     public function vacunas() {
     return $this->hasMany(Vacuna::class);
 }
+public function paseadores()
+{
+    return $this->belongsToMany(User::class, 'asignaciones_paseadores', 'mascota_id', 'paseador_id')
+                ->withPivot('desde', 'hasta')
+                ->withTimestamps();
+}
+
+
+public function asignaciones()
+{
+    return $this->hasMany(\App\Models\AsignacionPaseador::class);
+}
+
     
 }

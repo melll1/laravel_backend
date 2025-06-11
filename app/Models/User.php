@@ -46,4 +46,24 @@ protected $visible = [
     'email_verified_at',
 ];
 
+public function mascotasAsignadas()
+{
+    return $this->belongsToMany(Mascota::class, 'asignaciones_paseadores', 'paseador_id', 'mascota_id')
+                ->withPivot('desde', 'hasta')
+                ->withTimestamps();
+}
+
+
+public function paseosAsignados()
+{
+    return $this->hasMany(AsignacionPaseador::class, 'paseador_id');
+}
+
+public function asignaciones()
+{
+    return $this->hasMany(AsignacionPaseador::class, 'paseador_id');
+}
+
+
+
 }

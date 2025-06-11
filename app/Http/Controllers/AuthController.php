@@ -103,20 +103,30 @@ if ($token) {
 }
 
 
-// ✅ Busca SOLO usuarios con rol "dueno" y que coincidan con el texto buscado
 public function buscar(Request $request)
 {
     $query = $request->input('query');
+    $rol = $request->input('rol'); // ✅ Nuevo parámetro para el rol
 
-    $usuarios = User::where('role', 'dueno') // 🎯 Solo dueños
-        ->where(function ($q) use ($query) {
-            $q->where('name', 'like', '%' . $query . '%')    // 👤 Nombre
-              ->orWhere('email', 'like', '%' . $query . '%'); // 📧 Correo
+    $usuarios = User::when($rol, function ($q) use ($rol) {
+            return $q->where('role', $rol); // ✅ Solo si se pasa el rol
         })
-        ->get(['id', 'name', 'email']); // 🔽 Solo los campos necesarios
+        ->where(function ($q) use ($query) {
+            $q->where('name', 'like', '%' . $query . '%')
+              ->orWhere('email', 'like', '%' . $query . '%');
+        })
+        ->get(['id', 'name', 'email', 'role']);
 
-    return response()->json($usuarios); // 📤 Devolver como JSON
+    return response()->json($usuarios);
 }
+
+
+public function listarPaseadores()
+{
+    $paseadores = User::where('role', 'paseador')->get();
+    return response()->json($paseadores);
+}
+
 
 
 }
