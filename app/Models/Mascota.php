@@ -46,5 +46,10 @@ public function asignaciones()
     return $this->hasMany(\App\Models\AsignacionPaseador::class);
 }
 
+public function veterinario()
+{
+    return $this->belongsTo(User::class, 'veterinario_id');  // Asegúrate de que el campo 'veterinario_id' esté en la tabla 'mascotas'
+}
+
     
 }

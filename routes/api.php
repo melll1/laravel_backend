@@ -190,6 +190,10 @@ Route::delete('/mascotas/{mascota}/desasignar-paseador/{paseador}', [MascotaCont
 Route::get('/paseador/mascotas-asignadas', [MascotaController::class, 'mascotasAsignadasAlPaseador']);
 
 
+Route::post('/notificaciones/marcar-todas', [NotificacionController::class, 'marcarTodasLeidas']);
+
+Route::patch('/citas/{id}/responder', [CitaController::class, 'responder']);
+
 
 });
 
