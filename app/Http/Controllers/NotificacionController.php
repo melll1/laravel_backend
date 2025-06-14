@@ -72,7 +72,7 @@ class NotificacionController extends Controller
         }
     }
 
-    // Notificación para el veterinario (si es sobre una cita creada por un dueño)
+    // Notificación para el veterinario (si es sobre una cita pruebacreada por un dueño)
     if ($request->tipo === 'Cita') {
         Notificacion::create(array_merge($validated, [
             'veterinario_id' => $mascota->veterinario_id, // Veterinario asignado
