@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificacionController;
 use Illuminate\Support\Facades\Password;
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\AsignacionPaseadorController;
+use App\Http\Controllers\MensajeController;
 
 
 
@@ -193,6 +194,15 @@ Route::get('/paseador/mascotas-asignadas', [MascotaController::class, 'mascotasA
 Route::post('/notificaciones/marcar-todas', [NotificacionController::class, 'marcarTodasLeidas']);
 
 Route::patch('/citas/{id}/responder', [CitaController::class, 'responder']);
+
+
+Route::get('/mensajes/{mascotaId}', [MensajeController::class, 'index']); // Ver mensajes de una mascota
+Route::post('/mensajes', [MensajeController::class, 'store']);   // Enviar un nuevo mensaje
+Route::patch('/mensajes/{id}/leido', [MensajeController::class, 'marcarComoLeido']); // Marcar como leído
+Route::get('/mensajes/conversaciones', [MensajeController::class, 'conversacionesPorUsuario']); // <-- Añadir esta línea
+Route::get('/mensajes/mascotas-sin-chat', [MensajeController::class, 'mascotasSinConversacion']);
+
+
 
 
 });

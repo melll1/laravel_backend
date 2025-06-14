@@ -43,8 +43,9 @@ public function paseadores()
 
 public function asignaciones()
 {
-    return $this->hasMany(\App\Models\AsignacionPaseador::class);
+    return $this->hasMany(AsignacionPaseador::class);
 }
+
 
 public function veterinario()
 {
