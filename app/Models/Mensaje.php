@@ -18,15 +18,17 @@ class Mensaje extends Model
     ];
 
     // Relaciones
-    public function emisor()
-    {
-        return $this->belongsTo(User::class, 'emisor_id');
-    }
+    // app/Models/Mensaje.php
+public function emisor()
+{
+    return $this->belongsTo(\App\Models\User::class, 'emisor_id');
+}
 
-    public function receptor()
-    {
-        return $this->belongsTo(User::class, 'receptor_id');
-    }
+public function receptor()
+{
+    return $this->belongsTo(\App\Models\User::class, 'receptor_id');
+}
+
 
     public function mascota()
     {

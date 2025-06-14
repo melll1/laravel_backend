@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Mensaje;
 use App\Models\Mascota;
-use Illuminate\Support\Facades\Auth;
 use App\Models\AsignacionPaseador;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class MensajeController extends Controller
@@ -46,39 +46,50 @@ class MensajeController extends Controller
     }
 
     public function marcarComoLeido($id)
-{
-    $mensaje = Mensaje::findOrFail($id);
+    {
+        $mensaje = Mensaje::findOrFail($id);
 
-    // Solo el receptor puede marcar el mensaje como leído
-    if (Auth::id() !== $mensaje->receptor_id) {
-        return response()->json(['error' => 'No autorizado'], 403);
+        if (Auth::id() !== $mensaje->receptor_id) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $mensaje->leido = true;
+        $mensaje->save();
+
+        return response()->json(['mensaje' => 'Mensaje marcado como leído']);
     }
 
-    $mensaje->leido = true;
-    $mensaje->save();
-
-    return response()->json(['mensaje' => 'Mensaje marcado como leído']);
-}
-
-public function conversacionesPorUsuario()
+    public function conversacionesPorUsuario(Request $request)
 {
-    $userId = Auth::id();
+    $user = Auth::user();
+    $userId = $user->id;
+
+    Log::info('✅ Entró a conversacionesPorUsuario', ['auth_user_id' => $userId]);
 
     $mensajes = Mensaje::with(['mascota', 'emisor', 'receptor'])
-        ->where('emisor_id', $userId)
-        ->orWhere('receptor_id', $userId)
+        ->where(function ($query) use ($userId) {
+            $query->where('emisor_id', $userId)
+                  ->orWhere('receptor_id', $userId);
+        })
         ->orderByDesc('created_at')
         ->get();
+
+    Log::info('📦 Total mensajes recuperados:', ['count' => $mensajes->count()]);
+
+    if ($mensajes->isEmpty()) {
+        Log::warning('⚠️ No se encontraron mensajes para el usuario', ['user_id' => $userId]);
+        return response()->json([]); // ← Aquí ya cortamos si no hay nada
+    }
 
     $conversaciones = [];
 
     foreach ($mensajes as $mensaje) {
-        $mascotaId = $mensaje->mascota_id;
+        $otroUsuario = $mensaje->emisor_id === $userId ? $mensaje->receptor : $mensaje->emisor;
 
-        if (!isset($conversaciones[$mascotaId])) {
-            $otroUsuario = $mensaje->emisor_id === $userId ? $mensaje->receptor : $mensaje->emisor;
+        $key = $mensaje->mascota_id . '-' . $otroUsuario->id;
 
-            $conversaciones[$mascotaId] = [
+        if (!isset($conversaciones[$key])) {
+            $conversaciones[$key] = [
                 'mascota' => [
                     'id' => $mensaje->mascota->id,
                     'nombre' => $mensaje->mascota->nombre,
@@ -96,48 +107,49 @@ public function conversacionesPorUsuario()
         }
     }
 
+    Log::info('✅ Conversaciones generadas', ['total' => count($conversaciones)]);
     return response()->json(array_values($conversaciones));
 }
 
-public function mascotasSinConversacion()
-{
-    $user = Auth::user();
-
-    // Obtener IDs de mascotas del dueño
-    $mascotasDelDueno = \App\Models\Mascota::where('user_id', $user->id)->pluck('id');
-
-    // Obtener asignaciones activas (puedes filtrar por fechas si lo deseas también)
-    $asignaciones = \App\Models\AsignacionPaseador::with(['mascota', 'paseador'])
-        ->whereIn('mascota_id', $mascotasDelDueno)
-        ->get();
-
-    // Obtener IDs de mascotas que ya tienen mensajes
-    $mascotasConMensajes = \App\Models\Mensaje::whereIn('mascota_id', $mascotasDelDueno)
-        ->pluck('mascota_id')
-        ->unique();
-
-    // Filtrar las asignaciones cuya mascota aún no tiene mensajes
-    $sinConversacion = $asignaciones->filter(function ($asignacion) use ($mascotasConMensajes) {
-        return !$mascotasConMensajes->contains($asignacion->mascota_id);
-    });
-
-    // Mapear los resultados
-    $resultado = $sinConversacion->map(function ($asignacion) {
-        return [
-            'mascotaId' => $asignacion->mascota->id,
-            'mascotaNombre' => $asignacion->mascota->nombre,
-            'paseador' => [
-                'id' => $asignacion->paseador->id,
-                'nombre' => $asignacion->paseador->name,
-                'email' => $asignacion->paseador->email,
-            ],
-        ];
-    });
-
-    return response()->json($resultado->values());
-}
 
 
+    public function mascotasSinConversacion()
+    {
+        $user = Auth::user();
 
+        $mascotasDelDueno = Mascota::where('user_id', $user->id)->pluck('id');
 
+        $asignaciones = AsignacionPaseador::with(['mascota', 'paseador'])
+            ->whereIn('mascota_id', $mascotasDelDueno)
+            ->get();
+
+        $mensajes = Mensaje::where(function ($query) use ($user) {
+            $query->where('emisor_id', $user->id)
+                  ->orWhere('receptor_id', $user->id);
+        })->get();
+
+        $combinacionesConMensaje = $mensajes->map(function ($msg) use ($user) {
+            $otroUsuarioId = $msg->emisor_id === $user->id ? $msg->receptor_id : $msg->emisor_id;
+            return $msg->mascota_id . '-' . $otroUsuarioId;
+        });
+
+        $sinConversacion = $asignaciones->filter(function ($asignacion) use ($combinacionesConMensaje) {
+            $clave = $asignacion->mascota_id . '-' . $asignacion->paseador->id;
+            return !$combinacionesConMensaje->contains($clave);
+        });
+
+        $resultado = $sinConversacion->map(function ($asignacion) {
+            return [
+                'mascotaId' => $asignacion->mascota->id,
+                'mascotaNombre' => $asignacion->mascota->nombre,
+                'paseador' => [
+                    'id' => $asignacion->paseador->id,
+                    'nombre' => $asignacion->paseador->name,
+                    'email' => $asignacion->paseador->email,
+                ],
+            ];
+        });
+
+        return response()->json($resultado->values());
+    }
 }
