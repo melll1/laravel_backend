@@ -76,4 +76,23 @@ public function asignaciones()
     return $this->hasMany(AsignacionPaseador::class, 'paseador_id');
 }
 
+// en User.php
+public function mascotas()
+{
+    return $this->hasMany(Mascota::class);
+}
+
+// Mensajes enviados por este usuario
+public function sentMessages()
+{
+    return $this->hasMany(Message::class, 'sender_id');
+}
+
+// Mensajes recibidos por este usuario
+public function receivedMessages()
+{
+    return $this->hasMany(Message::class, 'receiver_id');
+}
+
+
 }

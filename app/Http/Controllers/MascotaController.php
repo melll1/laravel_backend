@@ -251,5 +251,13 @@ public function mascotasAsignadasAlPaseador()
 
     return response()->json($mascotas);
 }
+public function mascotasPorUsuario(Request $request)
+{
+    $usuario = $request->user();
+    $mascotas = Mascota::where('user_id', $usuario->id)->get();
+
+    return response()->json($mascotas);
+}
+
 
 }

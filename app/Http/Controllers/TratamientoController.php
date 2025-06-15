@@ -63,7 +63,7 @@ class TratamientoController extends Controller
             foreach ($horariosNotificacion as $hora) {
                 Notificacion::create([
                     'mascota_id' => $mascota->id,
-                    'veterinario_id' => Auth::user()->id,
+                    'veterinario_id' => NULL,
                     'dueno_id' => $duenoId,
                     'mensaje' => 'Recordatorio: administrar ' . $tratamiento->nombre . ' a ' . $mascota->nombre,
                     'tipo' => 'Tratamiento',

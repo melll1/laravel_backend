@@ -11,9 +11,11 @@ use App\Http\Controllers\VacunaController;
 use App\Http\Controllers\DesparasitacionController;
 use App\Http\Controllers\NotificacionController;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\AsignacionPaseadorController;
-use App\Http\Controllers\MensajeController;
+use App\Http\Controllers\MessageController;
 
 
 
@@ -83,11 +85,23 @@ Route::get('/buscar-usuarios', [AuthController::class, 'buscar']);
 // Buscador de mascotas por nombre, raza, etc.
 Route::get('/mascotas/buscar', [MascotaController::class, 'buscar']);
 
+// Después
+Route::middleware('auth:api')->group(function () {
+    Route::get('/mascotas/usuario', [MascotaController::class, 'mascotasPorUsuario']);
+});
+
+
+
 // 🔐 Rutas protegidas con autenticación (requieren token Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
       // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Perfil del usuario autenticado
+    Route::get('/user-profile', function (Request $request) {
+        return $request->user();
+    });
 
     // CRUD Mascotas
     Route::post('/mascotas', [MascotaController::class, 'store']); // Crear nueva mascota
@@ -96,12 +110,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mascotas', [MascotaController::class, 'index']); // Listar mascotas
     Route::get('/mascotas/buscar-avanzado', [MascotaController::class, 'buscarAvanzado']);
     Route::get('/mascotas/{id}', [MascotaController::class, 'show']); // Ver detalles de una mascota
-    Route::get('/mascotas/usuario', [MascotaController::class, 'mascotasPorUsuario']); // Mascotas del usuario autenticado
+    //Route::get('/mascotas/usuario', [MascotaController::class, 'mascotasPorUsuario']); // Mascotas del usuario autenticado
 
-    // Perfil del usuario autenticado
-    Route::get('/user-profile', function (Request $request) {
-        return $request->user();
-    });
+    
 
       // 📋 Rutas para historial médico
     Route::get('/mascotas/{id}/historial', [HistorialMedicoController::class, 'index']); // Ver historial por mascota
@@ -196,16 +207,73 @@ Route::post('/notificaciones/marcar-todas', [NotificacionController::class, 'mar
 Route::patch('/citas/{id}/responder', [CitaController::class, 'responder']);
 
 
-Route::get('/mensajes/{mascotaId}', [MensajeController::class, 'index']); // Ver mensajes de una mascota
-Route::post('/mensajes', [MensajeController::class, 'store']);   // Enviar un nuevo mensaje
-Route::patch('/mensajes/{id}/leido', [MensajeController::class, 'marcarComoLeido']); // Marcar como leído
-Route::get('/mensajes/conversaciones', [MensajeController::class, 'conversacionesPorUsuario']); // <-- Añadir esta línea
-Route::get('/mensajes/mascotas-sin-chat', [MensajeController::class, 'mascotasSinConversacion']);
+    // Mensajes
+   Route::get('/messages', [MessageController::class, 'inbox']);
+    Route::post('/messages', [MessageController::class, 'send']);
+    Route::patch('/messages/{id}/read', [MessageController::class, 'markAsRead']);
 
+// Búsqueda de usuarios por nombre para el formulario de mensajes
+Route::get('/users', function (Request $request) {
+    $search = $request->query('search');
+
+    return \App\Models\User::where('name', 'like', '%' . $search . '%')
+        ->select('id', 'name', 'role')
+        ->limit(10)
+        ->get();
+});
+ 
+Route::get('/destinatarios', function () {
+    $user = Auth::user();
+
+    if ($user->role === 'dueno') {
+        // El dueño quiere escribir a paseadores asignados a sus mascotas
+        $asignaciones = DB::table('asignaciones_paseadores')
+            ->join('mascotas', 'asignaciones_paseadores.mascota_id', '=', 'mascotas.id')
+            ->join('users as paseadores', 'asignaciones_paseadores.paseador_id', '=', 'paseadores.id')
+            ->where('mascotas.user_id', $user->id)
+            ->select('paseadores.id', 'paseadores.name', 'paseadores.role', 'mascotas.nombre as mascota', 'mascotas.especie')
+            ->get();
+    }
+
+    elseif ($user->role === 'paseador') {
+        // El paseador quiere escribir a dueños de las mascotas asignadas
+        $asignaciones = DB::table('asignaciones_paseadores')
+            ->join('mascotas', 'asignaciones_paseadores.mascota_id', '=', 'mascotas.id')
+            ->join('users as duenos', 'mascotas.user_id', '=', 'duenos.id')
+            ->where('asignaciones_paseadores.paseador_id', $user->id)
+            ->select('duenos.id', 'duenos.name', 'duenos.role', 'mascotas.nombre as mascota', 'mascotas.especie')
+            ->get();
+    }
+
+    else {
+        return response()->json([], 403);
+    }
+
+    // Agrupar por usuario
+    $agrupado = [];
+
+    foreach ($asignaciones as $asig) {
+        if (!isset($agrupado[$asig->id])) {
+            $agrupado[$asig->id] = [
+                'id' => $asig->id,
+                'name' => $asig->name,
+                'role' => $asig->role,
+                'mascotas' => []
+            ];
+        }
+        $agrupado[$asig->id]['mascotas'][] = [
+            'nombre' => $asig->mascota,
+            'especie' => $asig->especie
+        ];
+    }
+
+    return array_values($agrupado); // para devolverlo como array limpio
+});
 
 
 
 });
+
 
 
 
