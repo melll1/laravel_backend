@@ -61,6 +61,7 @@ class TratamientoController extends Controller
             ];
 
             foreach ($horariosNotificacion as $hora) {
+                // Notificación para el dueño
                 Notificacion::create([
                     'mascota_id' => $mascota->id,
                     'veterinario_id' => NULL,
@@ -70,6 +71,26 @@ class TratamientoController extends Controller
                     'fecha_notificacion' => $hora,
                     'leido' => false,
                 ]);
+            
+                // Notificaciones para paseadores activos
+                $hoy = now()->toDateString();
+                foreach ($mascota->paseadores as $paseador) {
+                    $desde = $paseador->pivot->desde;
+                    $hasta = $paseador->pivot->hasta;
+            
+                    if ($desde <= $hoy && (is_null($hasta) || $hasta >= $hoy)) {
+                        Notificacion::create([
+                            'mascota_id' => $mascota->id,
+                            'paseador_id' => $paseador->id,
+                            'veterinario_id' => null,
+                            'dueno_id' => null,
+                            'mensaje' => 'Recordatorio: administrar ' . $tratamiento->nombre . ' a ' . $mascota->nombre,
+                            'tipo' => 'Tratamiento',
+                            'fecha_notificacion' => $hora,
+                            'leido' => false,
+                        ]);
+                    }
+                }
             }
 
             $horaActual->addMinutes($frecuenciaMinutos);

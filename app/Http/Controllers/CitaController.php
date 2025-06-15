@@ -42,58 +42,56 @@ class CitaController extends Controller
     }
 
     // 🔹 Crear una cita (solo veterinario o dueno)
-   public function store(Request $request)
-{
-    $user = Auth::user();
-
-    // Validamos los datos de entrada
-    $validated = $request->validate([
-        'mascota_id' => 'required|exists:mascotas,id',
-        'fecha_hora' => 'required|date',
-        'motivo' => 'nullable|string',
-    ]);
-
-    // Creamos una nueva cita
-    $cita = new Cita();
-    $cita->mascota_id = $validated['mascota_id'];
-    $cita->fecha_hora = $validated['fecha_hora'];
-    $cita->motivo = $validated['motivo'] ?? null;
-
-    // Asignamos siempre el veterinario con ID 1 al dueño al crear una cita
-    if ($user->role === 'veterinario') {
-        $cita->veterinario_id = $user->id;
-        $cita->dueno_id = $request->input('dueno_id');
-        $cita->estado = 'aceptada';
-    } elseif ($user->role === 'dueno') {
-        $mascota = Mascota::findOrFail($validated['mascota_id']);
-
-        // Asignamos siempre al veterinario con ID 1
-        $cita->dueno_id = $user->id;
-        $cita->veterinario_id = 1; // Siempre asignamos el veterinario con ID 1
-        $cita->estado = 'pendiente';
-    } else {
-        return response()->json(['error' => 'No autorizado'], 403);
-    }
-
-    // Guardamos la cita
-    $cita->save();
-
-    // Enviar notificación si la cita fue creada por un dueño
-    if ($user->role === 'dueno') {
-        Notificacion::create([
-            'mascota_id' => $cita->mascota_id,
-            'dueno_id' => $cita->dueno_id,
-            'veterinario_id' => $cita->veterinario_id,
-            'tipo' => 'Cita',
-            'mensaje' => "Nueva cita solicitada para revisar a la mascota el {$cita->fecha_hora}",
-            'fecha_notificacion' => now(),
-            'leido' => false,
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+    
+        // Validamos los datos de entrada
+        $validated = $request->validate([
+            'mascota_id' => 'required|exists:mascotas,id',
+            'fecha_hora' => 'required|date',
+            'motivo' => 'nullable|string',
         ]);
+    
+        // Creamos una nueva cita
+        $cita = new Cita();
+        $cita->mascota_id = $validated['mascota_id'];
+        $cita->fecha_hora = $validated['fecha_hora'];
+        $cita->motivo = $validated['motivo'] ?? null;
+    
+        // Asignamos roles y estado según quién crea la cita
+        if ($user->role === 'veterinario') {
+            $cita->veterinario_id = $user->id;
+            $cita->dueno_id = $request->input('dueno_id');
+            $cita->estado = 'aceptada';
+        } elseif ($user->role === 'dueno') {
+            $mascota = Mascota::findOrFail($validated['mascota_id']);
+            $cita->dueno_id = $user->id;
+            $cita->veterinario_id = 1; // Ajusta esto si el veterinario cambia dinámicamente
+            $cita->estado = 'pendiente';
+        } else {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+    
+        // Guardamos la cita
+        $cita->save();
+    
+        // Notificación SOLO para el veterinario (no al dueño)
+        if ($user->role === 'dueno') {
+            Notificacion::create([
+                'mascota_id' => $cita->mascota_id,
+                'veterinario_id' => $cita->veterinario_id,
+                'cita_id' => $cita->id, // ✅ Añadir esto
+                'tipo' => 'Cita',
+                'mensaje' => "Nueva cita solicitada para revisar a la mascota el {$cita->fecha_hora}",
+                'fecha_notificacion' => now(),
+                'leido' => false,
+            ]);
+        }
+    
+        return response()->json($cita, 201);
     }
-
-    // Retornamos la cita creada
-    return response()->json($cita, 201);
-}
+    
 
 public function update(Request $request, $id)
 {
@@ -120,7 +118,7 @@ public function update(Request $request, $id)
                 Notificacion::create([
                     'mascota_id' => $cita->mascota_id,
                     'dueno_id' => $cita->dueno_id,
-                    'veterinario_id' => $veterinario->id,
+                   // 'veterinario_id' => $veterinario->id,
                     'tipo' => 'Cita Aceptada',
                     'mensaje' => "Tu cita para el {$cita->fecha_hora} fue aceptada por el veterinario.",
                     'fecha_notificacion' => now(),
@@ -135,7 +133,7 @@ public function update(Request $request, $id)
                 Notificacion::create([
                     'mascota_id' => $cita->mascota_id,
                     'dueno_id' => $cita->dueno_id,
-                    'veterinario_id' => $veterinario->id,
+                    //'veterinario_id' => $veterinario->id,
                     'tipo' => 'Cita Rechazada',
                     'mensaje' => "Tu cita fue rechazada por el veterinario. Por favor, elige otra fecha.",
                     'fecha_notificacion' => now(),
@@ -148,18 +146,39 @@ public function update(Request $request, $id)
     return response()->json($cita);
 }
 
+public function responder(Request $request, $id)
+{
+    $user = Auth::user();
+    $cita = Cita::findOrFail($id);
 
-    // 🔹 Eliminar cita (opcional)
-    public function destroy($id)
-    {
-        $cita = Cita::findOrFail($id);
-
-        if (Auth::id() !== $cita->veterinario_id) {
-            return response()->json(['error' => 'No autorizado'], 403);
-        }
-
-        $cita->delete();
-        return response()->json(['message' => 'Cita eliminada']);
+    if ($user->id !== $cita->veterinario_id) {
+        return response()->json(['error' => 'No autorizado'], 403);
     }
+
+    $validated = $request->validate([
+        'estado' => 'required|in:aceptada,rechazada'
+    ]);
+
+    $cita->estado = $validated['estado'];
+    $cita->save();
+
+    $mensaje = $validated['estado'] === 'aceptada'
+        ? "Tu cita para el {$cita->fecha_hora} fue aceptada por el veterinario."
+        : "Tu cita para el {$cita->fecha_hora} fue rechazada por el veterinario.";
+
+    Notificacion::create([
+        'mascota_id' => $cita->mascota_id,
+        'dueno_id' => $cita->dueno_id,
+        'cita_id' => $cita->id, // 👈 Agrega esto
+        'tipo' => 'Respuesta Cita',
+        'mensaje' => $mensaje,
+        'fecha_notificacion' => now(),
+        'leido' => false,
+    ]);
+
+    return response()->json(['mensaje' => 'Respuesta registrada y notificación enviada'], 200);
+}
+
+
     
 }

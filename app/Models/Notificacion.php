@@ -18,6 +18,7 @@ class Notificacion extends Model
         'mensaje',
         'fecha_notificacion',
         'leido',
+        'cita_id',
     ];
 
     public function mascota()

@@ -11,33 +11,26 @@ use Illuminate\Support\Facades\Auth;
 class NotificacionController extends Controller
 {
     // Obtener notificaciones del usuario autenticado
-   public function index(Request $request)
-{
-    $user = Auth::user(); // Obtiene el usuario autenticado
-
-    // Lógica para obtener las notificaciones según el rol
-    if ($user->role === 'dueno') {
-        // El dueño solo recibe notificaciones de las mascotas que tiene
-        $notificaciones = Notificacion::where('dueno_id', $user->id)
-            ->orderBy('fecha_notificacion', 'desc')
-            ->get();
-    } elseif ($user->role === 'paseador') {
-        // El paseador solo recibe notificaciones de las mascotas asignadas
-        $notificaciones = Notificacion::where('paseador_id', $user->id)
-            ->orderBy('fecha_notificacion', 'desc')
-            ->get();
-    } elseif ($user->role === 'veterinario') {
-        // El veterinario solo recibe notificaciones sobre citas creadas por los dueños
-        $notificaciones = Notificacion::where('veterinario_id', $user->id)
-            ->orderBy('fecha_notificacion', 'desc')
-            ->get();
-    } else {
-        // Si el rol no está definido, se retorna error
-        return response()->json(['error' => 'Rol no autorizado.'], 403);
+    public function index(Request $request)
+    {
+        $user = Auth::user(); // Obtiene el usuario autenticado
+    
+        $query = Notificacion::where('fecha_notificacion', '<=', now()) // 👈 Solo las que ya han llegado
+            ->orderBy('fecha_notificacion', 'desc');
+    
+        if ($user->role === 'dueno') {
+            $query->where('dueno_id', $user->id);
+        } elseif ($user->role === 'paseador') {
+            $query->where('paseador_id', $user->id);
+        } elseif ($user->role === 'veterinario') {
+            $query->where('veterinario_id', $user->id);
+        } else {
+            return response()->json(['error' => 'Rol no autorizado.'], 403);
+        }
+    
+        return response()->json($query->get());
     }
-
-    return response()->json($notificaciones);  // Devolvemos las notificaciones correspondientes al usuario
-}
+    
 
 
     // Crear una notificación

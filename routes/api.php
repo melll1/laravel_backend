@@ -192,6 +192,7 @@ Route::delete('/mascotas/{id}/desasignar-paseador', [MascotaController::class, '
     Route::post('/notificaciones', [NotificacionController::class, 'store']);
     Route::put('/notificaciones/{id}', [NotificacionController::class, 'update']);
     // Citas
+    Route::patch('/citas/{id}/responder', [CitaController::class, 'responder']);
 Route::apiResource('citas', CitaController::class)->only(['index', 'store', 'update', 'destroy']);
 
 // Asignaciones de paseador
@@ -204,7 +205,6 @@ Route::get('/paseador/mascotas-asignadas', [MascotaController::class, 'mascotasA
 
 Route::post('/notificaciones/marcar-todas', [NotificacionController::class, 'marcarTodasLeidas']);
 
-Route::patch('/citas/{id}/responder', [CitaController::class, 'responder']);
 
 
     // Mensajes
